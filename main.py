@@ -1,8 +1,10 @@
-"""LLM pipeline: summary, 3 ключевые мысли и короткий ответ для каждого текста.
+"""LLM pipeline: анализ входящего текста и ответ на него.
 
-Два режима:
-    python main.py                      # пайплайн с лучшим промптом -> results/day02_results.json
+Режимы:
+    python main.py                      # День 3: structured output + валидация схемой -> results/day03_results.json
     python main.py my_text.txt          # свои файлы
+    python main.py --demo-errors        # День 3: показать, как разбираются сломанные ответы (без LLM)
+    python main.py --day2               # пайплайн Дня 2 (лучший промпт v4, без схемы)
     python main.py --compare            # День 2: сравнить все варианты промпта
     python main.py --compare --repeats 3
     python main.py --compare --variants v2_constraints v4_combined
@@ -29,10 +31,13 @@ from prompts import (
     MAX_SUMMARY_CHARS,
     PROMPT_VARIANTS,
     build_prompts,
+    build_structured_prompts,
 )
+from schemas import LLMOutputError, TextAnalysis, parse_analysis
 
 INPUT_DIR = Path("sample_inputs")
 RESULTS_PATH = Path("results/day02_results.json")
+DAY3_RESULTS_PATH = Path("results/day03_results.json")
 COMPARE_PATH = Path("results/day02_comparison.json")
 REPORT_PATH = Path("reports/day02_prompt_comparison.md")
 
@@ -251,15 +256,202 @@ def run_comparison(client, texts, repeats, variants):
     logger.info("Отчёт: %s", REPORT_PATH)
 
 
+# ---------- День 3: structured output ----------
+
+# Куда отправляем обращение в зависимости от категории
+ROUTES = {
+    "complaint": "support",        # в очередь поддержки, ответ клиенту — черновик для оператора
+    "question": "auto_reply",      # можно отвечать автоматически
+    "request": "assistant",        # отдаём пользователю готовый результат (письмо, текст)
+    "news": "digest",              # в дайджест новостей, клиенту не отвечаем
+    "other": "manual_review",
+}
+
+
+def analyze_structured(client, text):
+    """Вызов модели + разбор ответа по схеме. Возвращает TextAnalysis или бросает LLMOutputError."""
+    system_prompt, user_prompt = build_structured_prompts(text)
+    raw = client.chat(system_prompt, user_prompt, temperature=0.2, json_mode=True)
+    return parse_analysis(raw)
+
+
+def decide(analysis: TextAnalysis):
+    """Используем поля structured output для решений, а не только для печати."""
+    category = analysis.category.value
+    sentiment = analysis.sentiment.value
+
+    if category == "complaint" and sentiment == "negative":
+        priority = "high"
+    elif category in ("complaint", "request") or sentiment == "negative":
+        priority = "medium"
+    else:
+        priority = "low"
+
+    route = ROUTES[category]
+    # Позитивный отзыв не требует ручного разбора — отвечаем благодарностью
+    if category == "other" and sentiment == "positive":
+        route = "auto_reply"
+
+    # Как поступаем с final_answer:
+    # auto  — отправляем автору сразу; draft — черновик оператору (модель может пообещать лишнее);
+    # none  — автору не отвечаем (новости, ручной разбор)
+    if route in ("auto_reply", "assistant"):
+        reply_mode = "auto"
+    elif route == "support":
+        reply_mode = "draft"
+    else:
+        reply_mode = "none"
+
+    return {"priority": priority, "route": route, "reply_mode": reply_mode, "final_answer": analysis.final_answer}
+
+def length_warnings(analysis: TextAnalysis):
+    """Мягкие проверки длины из Дня 2: не ломают пайплайн, а только предупреждают."""
+    warnings = []
+    if len(analysis.summary) > MAX_SUMMARY_CHARS:
+        warnings.append(f"summary длиннее {MAX_SUMMARY_CHARS} символов ({len(analysis.summary)})")
+    if len(analysis.final_answer) > MAX_RESPONSE_CHARS:
+        warnings.append(f"final_answer длиннее {MAX_RESPONSE_CHARS} символов ({len(analysis.final_answer)})")
+    long_points = [p for p in analysis.key_points if len(p.split()) > MAX_KEY_POINT_WORDS]
+    if long_points:
+        warnings.append(f"{len(long_points)} key point(s) длиннее {MAX_KEY_POINT_WORDS} слов")
+    return warnings
+
+
+def print_structured(name, analysis, decision, warnings):
+    print("\n" + "=" * 70)
+    print(f"📄 {name}  [{analysis.category.value} · {analysis.sentiment.value}]  "
+          f"приоритет: {decision['priority']}  →  {decision['route']}")
+    print("-" * 70)
+    print(f"Summary: {analysis.summary}")
+    print("Ключевые мысли:")
+    for i, point in enumerate(analysis.key_points, 1):
+        print(f"  {i}. {point}")
+    if decision["reply_mode"] == "auto":
+        print(f"Ответ автору (отправлен): {decision['final_answer']}")
+    elif decision["reply_mode"] == "draft":
+        print(f"Черновик для оператора: {decision['final_answer']}")
+    else:
+        print(f"Автору не отвечаем (маршрут {decision['route']}). Вывод: {decision['final_answer']}")
+    if warnings:
+        print("⚠️ " + "; ".join(warnings))
+
+
+def print_failure(name, error):
+    print("\n" + "=" * 70)
+    print(f"📄 {name}  ❌ ответ модели не принят [{error.kind}]")
+    print("-" * 70)
+    print(error.message)
+    print("→ обращение отправлено на ручной разбор (manual_review)")
+
+
+def run_structured(client, texts):
+    results = []
+    for name, text in texts:
+        logger.info("Обрабатываю %s", name)
+        try:
+            analysis = analyze_structured(client, text)
+        except LLMOutputError as e:
+            logger.error("%s: %s", name, e.message)
+            print_failure(name, e)
+            results.append({"file": name, "status": "error", "error_kind": e.kind,
+                            "error_message": e.message, "raw": e.raw[:500],
+                            "decision": {"priority": "medium", "route": "manual_review", "reply_mode": "none"}})
+            continue
+        except Exception as e:  # сеть, таймаут, Ollama не запущена
+            logger.error("%s: ошибка API: %s", name, e)
+            err = LLMOutputError("api_error", f"Не удалось получить ответ модели: {e}")
+            print_failure(name, err)
+            results.append({"file": name, "status": "error", "error_kind": "api_error",
+                            "error_message": err.message,
+                            "decision": {"priority": "medium", "route": "manual_review", "reply_mode": "none"}})
+            continue
+
+        decision = decide(analysis)
+        warnings = length_warnings(analysis)
+        print_structured(name, analysis, decision, warnings)
+        results.append({"file": name, "status": "ok", "analysis": analysis.model_dump(mode="json"),
+                        "decision": decision, "warnings": warnings})
+
+    stats = build_stats(results)
+    print_stats(stats)
+    save_json(DAY3_RESULTS_PATH, {
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "model": client.model,
+        "stats": stats,
+        "results": results,
+    })
+    logger.info("Результаты сохранены в %s", DAY3_RESULTS_PATH)
+
+
+def build_stats(results):
+    """Сводка по батчу — ещё одно использование structured полей."""
+    ok = [r for r in results if r["status"] == "ok"]
+
+    def count(values):
+        out = {}
+        for v in values:
+            out[v] = out.get(v, 0) + 1
+        return out
+
+    return {
+        "total": len(results),
+        "ok": len(ok),
+        "errors": count(r["error_kind"] for r in results if r["status"] == "error"),
+        "by_category": count(r["analysis"]["category"] for r in ok),
+        "by_sentiment": count(r["analysis"]["sentiment"] for r in ok),
+        "by_route": count(r["decision"]["route"] for r in results),
+        "high_priority": [r["file"] for r in ok if r["decision"]["priority"] == "high"],
+    }
+
+
+def print_stats(stats):
+    print("\n" + "=" * 70)
+    print(f"Итого: {stats['ok']}/{stats['total']} ответов прошли валидацию схемой")
+    if stats["errors"]:
+        print(f"Ошибки: {stats['errors']}")
+    print(f"Категории: {stats['by_category']}")
+    print(f"Тональность: {stats['by_sentiment']}")
+    print(f"Маршруты: {stats['by_route']}")
+    if stats["high_priority"]:
+        print(f"🔥 Высокий приоритет: {', '.join(stats['high_priority'])}")
+
+
+# Заранее сломанные ответы модели — чтобы проверить обработку ошибок без LLM
+BROKEN_EXAMPLES = {
+    "текст вместо JSON": "Конечно! Вот анализ: категория — жалоба, тон негативный.",
+    "битый JSON (лишняя запятая)": '{"category": "complaint", "sentiment": "negative", "summary": "S", "key_points": ["a", "b", "c"], "final_answer": "Извините",}',
+    "нет полей": '{"category": "complaint", "summary": "S", "key_points": ["a", "b", "c"]}',
+    "неверные типы": '{"category": "complaint", "sentiment": "negative", "summary": "S", "key_points": "a, b, c", "final_answer": 42}',
+    "недопустимые значения": '{"category": "жалоба", "sentiment": "mixed", "summary": "S", "key_points": ["a", "b", "c", "d"], "final_answer": "Ок"}',
+    "пустой ответ": "",
+    "валидный, но в markdown": '```json\n{"category": "Question ", "sentiment": "Neutral", "summary": "S", "key_points": ["a", "b", "c"], "final_answer": "Да"}\n```',
+}
+
+
+def demo_errors():
+    """Прогоняет сломанные ответы через parse_analysis и печатает, что программа о них скажет."""
+    for name, raw in BROKEN_EXAMPLES.items():
+        try:
+            analysis = parse_analysis(raw)
+            print(f"✅ {name}: принят — {analysis.category.value} / {analysis.sentiment.value}")
+        except LLMOutputError as e:
+            print(f"❌ {name} [{e.kind}]: {e.message}")
+
 def main():
     parser = argparse.ArgumentParser(description="LLM pipeline")
     parser.add_argument("files", nargs="*", help="Файлы с текстами (по умолчанию sample_inputs/*.txt)")
-    parser.add_argument("--compare", action="store_true", help="Сравнить все варианты промпта")
+    parser.add_argument("--day2", action="store_true", help="Пайплайн Дня 2 (без схемы)")
+    parser.add_argument("--compare", action="store_true", help="Сравнить все варианты промпта (День 2)")
     parser.add_argument("--repeats", type=int, default=2, help="Прогонов на текст в режиме --compare")
-    parser.add_argument("--variant", default=BEST_VARIANT, choices=list(PROMPT_VARIANTS), help="Вариант промпта")
+    parser.add_argument("--variant", default=BEST_VARIANT, choices=list(PROMPT_VARIANTS), help="Вариант промпта для --day2")
     parser.add_argument("--variants", nargs="+", default=list(PROMPT_VARIANTS), choices=list(PROMPT_VARIANTS),
                         help="Какие варианты сравнивать в режиме --compare (по умолчанию все)")
+    parser.add_argument("--demo-errors", action="store_true", help="Показать обработку сломанных ответов (без LLM)")
     args = parser.parse_args()
+
+    if args.demo_errors:
+        demo_errors()
+        return
 
     load_dotenv()
     client = LLMClient()
@@ -271,8 +463,10 @@ def main():
 
     if args.compare:
         run_comparison(client, texts, args.repeats, args.variants)
-    else:
+    elif args.day2:
         run_pipeline(client, texts, args.variant)
+    else:
+        run_structured(client, texts)
 
 
 if __name__ == "__main__":

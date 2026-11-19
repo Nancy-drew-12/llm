@@ -161,3 +161,47 @@ def build_prompts(text, variant=BEST_VARIANT):
     # лишние параметры (language) str.format просто игнорирует в шаблонах, где их нет
     user = prompt["user"].format(text=text.strip(), language=detect_language(text), **LIMITS)
     return prompt["system"], user
+
+
+
+# ================= День 3: structured output =================
+# Подход как в v4_combined (лучший в Дне 2), но поля новые:
+# category, sentiment, summary, key_points, final_answer.
+# category и sentiment стоят первыми: модель сначала решает, что за текст и какой тон,
+# а потом пишет ответ с учётом этого.
+
+SYSTEM_STRUCTURED = SYSTEM_V4
+
+USER_STRUCTURED = """Язык ответа: {language}. Все текстовые поля пиши на этом языке.
+
+Проанализируй текст и верни ТОЛЬКО JSON строго такого вида:
+{{"category": "...", "sentiment": "...", "summary": "...", "key_points": ["...", "...", "..."], "final_answer": "..."}}
+
+Поля:
+- category — строго одно из: complaint, question, request, news, other
+  (complaint — автор недоволен сервисом или продуктом; question — спрашивает совета или информации;
+  request — просит сделать что-то за него; news — сообщение о событии; other — остальное);
+- sentiment — строго одно из: negative, neutral, positive (тон автора текста);
+- summary — одно предложение, не длиннее {max_summary_chars} символов;
+- key_points — массив ровно из {key_points_count} строк, каждая до {max_key_point_words} слов; факты и мысли из текста, не советы;
+- final_answer — не длиннее {max_response_chars} символов:
+  complaint — от лица сервиса: извинись и предложи следующий шаг;
+  question — прямо ответь и дай один практический совет;
+  request — выполни просьбу (если просят текст — напиши сам текст);
+  news — нейтральный вывод для читателя;
+  other — короткий полезный комментарий.
+
+Значения category и sentiment пиши латиницей, как в списке, даже если текст на русском.
+
+Текст:
+\"\"\"
+{text}
+\"\"\"
+
+Перед ответом проверь: все 5 полей на месте, key_points ровно {key_points_count}, текстовые поля на языке: {language}."""
+
+
+def build_structured_prompts(text):
+    """Промпты для Дня 3: (system_prompt, user_prompt) под схему TextAnalysis."""
+    user = USER_STRUCTURED.format(text=text.strip(), language=detect_language(text), **LIMITS)
+    return SYSTEM_STRUCTURED, user

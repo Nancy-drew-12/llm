@@ -1,0 +1,160 @@
+{
+  "created_at": "2026-11-19T13:55:29",
+  "model": "qwen2.5:7b",
+  "stats": {
+    "total": 6,
+    "ok": 6,
+    "errors": {},
+    "by_category": {
+      "complaint": 2,
+      "question": 1,
+      "news": 1,
+      "request": 1,
+      "other": 1
+    },
+    "by_sentiment": {
+      "negative": 2,
+      "neutral": 3,
+      "positive": 1
+    },
+    "by_route": {
+      "support": 2,
+      "auto_reply": 1,
+      "digest": 1,
+      "assistant": 1,
+      "manual_review": 1
+    },
+    "high_priority": [
+      "01_complaint.txt",
+      "05_english_bug.txt"
+    ]
+  },
+  "results": [
+    {
+      "file": "01_complaint.txt",
+      "status": "ok",
+      "analysis": {
+        "category": "complaint",
+        "sentiment": "negative",
+        "summary": "Автор недоволен опозданием курьера и холодной пиццей, требует компенсации.",
+        "key_points": [
+          "опоздание курьера",
+          "пицца была холодной",
+          "ответ в поддержке шаблонный"
+        ],
+        "final_answer": "Извиняемся за доставленные неудобства. Пожалуйста, оставьте свой адрес для отправки компенсации."
+      },
+      "decision": {
+        "priority": "high",
+        "route": "support",
+        "reply_to_author": "Извиняемся за доставленные неудобства. Пожалуйста, оставьте свой адрес для отправки компенсации."
+      },
+      "warnings": []
+    },
+    {
+      "file": "02_question.txt",
+      "status": "ok",
+      "analysis": {
+        "category": "question",
+        "sentiment": "neutral",
+        "summary": "Автор ищет направление для обучения в машинном обучении.",
+        "key_points": [
+          "работа аналитика",
+          "план перейти в ML-инженеры",
+          "10 часов в неделю"
+        ],
+        "final_answer": "Начните с классического ML для прочного фундамента. Затем переходите к трансформерам и LLM для современных методов. Не забывайте про MLOps для эффективного использования моделей."
+      },
+      "decision": {
+        "priority": "low",
+        "route": "auto_reply",
+        "reply_to_author": "Начните с классического ML для прочного фундамента. Затем переходите к трансформерам и LLM для современных методов. Не забывайте про MLOps для эффективного использования моделей."
+      },
+      "warnings": []
+    },
+    {
+      "file": "03_news.txt",
+      "status": "ok",
+      "analysis": {
+        "category": "news",
+        "sentiment": "neutral",
+        "summary": "Компания показала рост выручки, но сократила операционную прибыль.",
+        "key_points": [
+          "выручка выросла на 12%",
+          "операционная прибыль снизилась",
+          "планируется запустить службу доставки"
+        ],
+        "final_answer": "Отчет о результатах компании показывает положительную динамику, но есть и проблемы. Акции упали, что может указывать на тревоги инвесторов."
+      },
+      "decision": {
+        "priority": "low",
+        "route": "digest",
+        "reply_to_author": null
+      },
+      "warnings": []
+    },
+    {
+      "file": "04_request.txt",
+      "status": "ok",
+      "analysis": {
+        "category": "request",
+        "sentiment": "neutral",
+        "summary": "Автор просит помочь составить профессиональное письмо о переносе дедлайна.",
+        "key_points": [
+          "помощь в составлении письма",
+          "перенос дедлайна на неделю",
+          "ошибки в данных смежной команды"
+        ],
+        "final_answer": "Понимаю вашу ситуацию. Вот пример: 'Уважаемый [Имя руководителя], прошу перенести дедлайн квартального отчета на неделю из-за ошибок в данных от смежной команды. С уважением, [Ваше имя]'."
+      },
+      "decision": {
+        "priority": "medium",
+        "route": "assistant",
+        "reply_to_author": "Понимаю вашу ситуацию. Вот пример: 'Уважаемый [Имя руководителя], прошу перенести дедлайн квартального отчета на неделю из-за ошибок в данных от смежной команды. С уважением, [Ваше имя]'."
+      },
+      "warnings": []
+    },
+    {
+      "file": "05_english_bug.txt",
+      "status": "ok",
+      "analysis": {
+        "category": "complaint",
+        "sentiment": "negative",
+        "summary": "The user is frustrated with the mobile app crashing when trying to upload photos.",
+        "key_points": [
+          "Mobile app crashes",
+          "iPhone 13, iOS 18",
+          "Reinstallation did not help"
+        ],
+        "final_answer": "I apologize for the inconvenience. Until the issue is resolved, try clearing cache or updating iOS. If the problem persists, please contact support."
+      },
+      "decision": {
+        "priority": "high",
+        "route": "support",
+        "reply_to_author": "I apologize for the inconvenience. Until the issue is resolved, try clearing cache or updating iOS. If the problem persists, please contact support."
+      },
+      "warnings": []
+    },
+    {
+      "file": "06_praise.txt",
+      "status": "ok",
+      "analysis": {
+        "category": "other",
+        "sentiment": "positive",
+        "summary": "Автор благодарит курьера за качественное обслуживание.",
+        "key_points": [
+          "Заказ привезен раньше",
+          "Еда была горячей и аккуратной",
+          "Курьер предупредил звонком"
+        ],
+        "final_answer": "Спасибо за ваш отзыв! Мы рады, что вам понравилось обслуживание. Будем стараться поддерживать высокий уровень сервиса."
+      },
+      "decision": {
+        "priority": "low",
+        "route": "manual_review",
+        "reply_to_author": null
+      },
+      "warnings": []
+    }
+  ]
+}
