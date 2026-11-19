@@ -1,0 +1,257 @@
+{
+  "created_at": "2026-11-18T10:58:31",
+  "model": "qwen2.5:7b",
+  "repeats": 1,
+  "summary": {
+    "v2_constraints": {
+      "runs": 5,
+      "json_ok": 1.0,
+      "summary_ok": 1.0,
+      "key_points_ok": 1.0,
+      "key_point_words_ok": 1.0,
+      "response_ok": 1.0,
+      "all_ok": 1.0,
+      "avg_summary_len": 60.4,
+      "avg_response_len": 153.8,
+      "avg_latency_s": 4.9
+    },
+    "v4_combined": {
+      "runs": 5,
+      "json_ok": 1.0,
+      "summary_ok": 1.0,
+      "key_points_ok": 1.0,
+      "key_point_words_ok": 1.0,
+      "response_ok": 1.0,
+      "all_ok": 1.0,
+      "avg_summary_len": 70.4,
+      "avg_response_len": 145.6,
+      "avg_latency_s": 6.9
+    }
+  },
+  "runs": {
+    "v2_constraints": [
+      {
+        "file": "01_complaint.txt",
+        "repeat": 1,
+        "json_ok": true,
+        "text_type": "",
+        "summary": "Клиент недоволен опозданием курьера и холодной доставкой.",
+        "key_points": [
+          "Курьер опаздывает",
+          "Доставка была холодной",
+          "Поддержка ответила шаблонно"
+        ],
+        "response": "Клиент остался недоволен и рассматривает перенос к конкурентам. Нужно предложить компенсацию и объяснение для улучшения ситуации.",
+        "summary_len": 57,
+        "response_len": 129,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true,
+        "violations": [],
+        "latency_s": 4.51
+      },
+      {
+        "file": "02_question.txt",
+        "repeat": 1,
+        "json_ok": true,
+        "text_type": "",
+        "summary": "Аналитик с опытом в SQL и pandas задумывается о будущем в ML-инженеры.",
+        "key_points": [
+          "Хочет перейти в ML-инженеры",
+          "Не знает, что изучать: классический ML, трансформеры или MLOps",
+          "Время на обучение ограничено 10 часов в неделю"
+        ],
+        "response": "Для начала рекомендуется выбрать одну область и углубиться в неё, чтобы не разбрасываться. Например, можно начать с MLOps, так как это востребовано и поможет в будущем.",
+        "summary_len": 70,
+        "response_len": 168,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true,
+        "violations": [],
+        "latency_s": 5.89
+      },
+      {
+        "file": "03_news.txt",
+        "repeat": 1,
+        "json_ok": true,
+        "text_type": "",
+        "summary": "Выручка компании выросла на 12%, но операционная прибыль сократилась.",
+        "key_points": [
+          "Выручка выросла на 12%",
+          "Операционная прибыль снизилась на 5%",
+          "Планируется запустить собственную службу доставки в 2027 году"
+        ],
+        "response": "Компания показала рост выручки, но сократила прибыль из-за увеличения расходов. Запуск собственной доставки в будущем может повлиять на акционерную стоимость.",
+        "summary_len": 69,
+        "response_len": 158,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true,
+        "violations": [],
+        "latency_s": 5.75
+      },
+      {
+        "file": "04_request.txt",
+        "repeat": 1,
+        "json_ok": true,
+        "text_type": "",
+        "summary": "Письмо о запросе переноса дедлайна квартального отчета.",
+        "key_points": [
+          "Просьба о переносе дедлайна",
+          "Проблемы с данными смежной команды",
+          "Профессиональный, но без оправданий тон"
+        ],
+        "response": "Письмо должно быть профессиональным, акцентируя внимание на проблеме с данными, но не углубляясь в детали. Это поможет сохранить деловой тон.",
+        "summary_len": 55,
+        "response_len": 141,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true,
+        "violations": [],
+        "latency_s": 5.03
+      },
+      {
+        "file": "05_english_bug.txt",
+        "repeat": 1,
+        "json_ok": true,
+        "text_type": "",
+        "summary": "User's iPhone 13 app crashes when uploading photos.",
+        "key_points": [
+          "Mobile app crashes on upload",
+          "Issue on iOS 18",
+          "Reinstallation didn't help"
+        ],
+        "response": "It seems this is a specific issue with photo uploads on iOS 18. Until it's resolved, users might try updating their iOS version or contacting support for further assistance.",
+        "summary_len": 51,
+        "response_len": 173,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true,
+        "violations": [],
+        "latency_s": 3.3
+      }
+    ],
+    "v4_combined": [
+      {
+        "file": "01_complaint.txt",
+        "repeat": 1,
+        "json_ok": true,
+        "text_type": "complaint",
+        "summary": "Автор недоволен опозданием курьера и холодной пиццей, не получил компенсации.",
+        "key_points": [
+          "Автор заказывает доставку третий раз за месяц",
+          "Курьер опаздывает более чем на час",
+          "Пицца пришла холодной"
+        ],
+        "response": "Извиняемся за доставленные неудобства. Пожалуйста, уточните детали заказа для проверки. Мы предложим компенсацию.",
+        "summary_len": 77,
+        "response_len": 113,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true,
+        "violations": [],
+        "latency_s": 8.41
+      },
+      {
+        "file": "02_question.txt",
+        "repeat": 1,
+        "json_ok": true,
+        "text_type": "question",
+        "summary": "Аналитик задаётся вопросом о специализации в машинном обучении.",
+        "key_points": [
+          "Работает два года с SQL и pandas",
+          "Хочет перейти в ML-инженеры через полгода",
+          "Время на обучение ограничено"
+        ],
+        "response": "Начните с классического ML, чтобы укрепить основы. Затем переходите к трансформерам и LLM для современных методов. Не забывайте про MLOps для эффективного деплоя моделей.",
+        "summary_len": 63,
+        "response_len": 170,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true,
+        "violations": [],
+        "latency_s": 6.55
+      },
+      {
+        "file": "03_news.txt",
+        "repeat": 1,
+        "json_ok": true,
+        "text_type": "news",
+        "summary": "Компания показала рост выручки, но сократила операционную прибыль и снизила акции.",
+        "key_points": [
+          "Выручка выросла на 12% год к году",
+          "Операционная прибыль снизилась на 5%",
+          "Акции компании подешевели на 3%"
+        ],
+        "response": "Информация о финансовых результатах компании может влиять на рынок. Внимательно следите за новостями и анализами специалистов.",
+        "summary_len": 82,
+        "response_len": 126,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true,
+        "violations": [],
+        "latency_s": 6.46
+      },
+      {
+        "file": "04_request.txt",
+        "repeat": 1,
+        "json_ok": true,
+        "text_type": "request",
+        "summary": "Автор просит помочь составить профессиональное письмо о переносе дедлайна.",
+        "key_points": [
+          "попросить перенести дедлайн",
+          "данные от смежной команды с ошибками",
+          "письмо должно быть профессиональным"
+        ],
+        "response": "Понял, нужно короткое и профессиональное письмо. Вот пример: 'Уважаемый руководитель, прошу перенести дедлайн квартального отчета на неделю. Данные от смежной команды требуют перепроверки. Спасибо.'",
+        "summary_len": 74,
+        "response_len": 198,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true,
+        "violations": [],
+        "latency_s": 7.34
+      },
+      {
+        "file": "05_english_bug.txt",
+        "repeat": 1,
+        "json_ok": true,
+        "text_type": "complaint",
+        "summary": "User's mobile app crashes when trying to upload a photo.",
+        "key_points": [
+          "App crashes on iPhone 13, iOS 18",
+          "Reinstallation did not help",
+          "Other features work fine"
+        ],
+        "response": "This issue might be known. Please try updating your iOS. If the problem persists, contact support for further assistance.",
+        "summary_len": 56,
+        "response_len": 121,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true,
+        "violations": [],
+        "latency_s": 5.76
+      }
+    ]
+  }
+}

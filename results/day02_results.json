@@ -1,0 +1,112 @@
+{
+  "created_at": "2026-11-19T13:46:54",
+  "model": "qwen2.5:7b",
+  "prompt_variant": "v4_combined",
+  "results": [
+    {
+      "file": "01_complaint.txt",
+      "status": "ok",
+      "text_type": "complaint",
+      "summary": "Автор недоволен опозданием курьера и холодной пиццей, не получил компенсации.",
+      "key_points": [
+        "Автор заказывает доставку третий раз за месяц",
+        "Курьер опаздывает более часа",
+        "Пицца пришла холодной"
+      ],
+      "response": "Извиняемся за неудобства. Пожалуйста, уточните детали заказа для проверки. Возможно, мы сможем предложить компенсацию или скидку.",
+      "checks": {
+        "summary_len": 77,
+        "response_len": 129,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true
+      }
+    },
+    {
+      "file": "02_question.txt",
+      "status": "ok",
+      "text_type": "question",
+      "summary": "Аналитик спрашивает, что изучать для перехода в ML-инженеры.",
+      "key_points": [
+        "работа аналитика",
+        "цель — ML-инженер",
+        "ограничено время для обучения"
+      ],
+      "response": "Начните с классического ML, так как это фундамент. Затем переходите к трансформерам и LLM. Не забывайте про MLOps для управления процессами.",
+      "checks": {
+        "summary_len": 60,
+        "response_len": 140,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true
+      }
+    },
+    {
+      "file": "03_news.txt",
+      "status": "ok",
+      "text_type": "news",
+      "summary": "Компания показала рост выручки, но сократила операционную прибыль.",
+      "key_points": [
+        "Выручка выросла на 12% год к году",
+        "Операционная прибыль снизилась на 5%",
+        "Планы запустить собственную службу доставки в 2027 году"
+      ],
+      "response": "Информация об отчёте компании полезна для инвесторов и клиентов. Внимательно следите за новостями и анализами рынка.",
+      "checks": {
+        "summary_len": 66,
+        "response_len": 116,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true
+      }
+    },
+    {
+      "file": "04_request.txt",
+      "status": "ok",
+      "text_type": "request",
+      "summary": "Автор просит помочь составить профессиональное письмо руководителю о переносе дедлайна.",
+      "key_points": [
+        "помощь в составлении письма",
+        "перенос дедлайна на неделю",
+        "отсутствие лишних оправданий"
+      ],
+      "response": "Понял вас. Вот пример: 'Уважаемый [Имя руководителя], прошу перенести дедлайн квартального отчета на неделю из-за ошибок в данных от смежной команды. Спасибо за понимание.'",
+      "checks": {
+        "summary_len": 87,
+        "response_len": 172,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true
+      }
+    },
+    {
+      "file": "05_english_bug.txt",
+      "status": "ok",
+      "text_type": "complaint",
+      "summary": "User's mobile app crashes when trying to upload a photo.",
+      "key_points": [
+        "Mobile app crashes on photo upload",
+        "Issue persists after reinstallation",
+        "Other features work fine"
+      ],
+      "response": "We apologize for the inconvenience. Could you please check your internet connection and try again? If the issue continues, we recommend reaching out to our support team for further assistance.",
+      "checks": {
+        "summary_len": 56,
+        "response_len": 192,
+        "summary_ok": true,
+        "key_points_ok": true,
+        "key_point_words_ok": true,
+        "response_ok": true,
+        "all_ok": true
+      }
+    }
+  ]
+}

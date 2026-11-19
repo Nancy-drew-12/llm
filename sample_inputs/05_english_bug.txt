@@ -1,0 +1,1 @@
+Hi team, since yesterday's update the mobile app crashes every time I try to upload a photo to my profile. I'm on iPhone 13, iOS 18. I already reinstalled the app twice, but nothing changed. Other features seem to work fine. Is this a known issue, and is there a workaround until it's fixed?
