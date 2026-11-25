@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, Field
 
 
@@ -13,3 +12,11 @@ class StructuredFields(BaseModel):
     duration: str | None = None
     requested_action: str
     important_facts: list[str]
+
+
+class SelfCheckResult(BaseModel):
+    is_valid: bool
+    contradictions: list[str]
+    missing_details: list[str]
+    unsupported_claims: list[str]
+    explanation: str
