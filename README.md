@@ -1,128 +1,370 @@
-# LLM pipeline для обработки текста
+# AI Customer Support Assistant
 
-Учебный проект: модульный LLM-пайплайн, который принимает текст, извлекает из него структуру и генерирует полезный ответ.
+An LLM-powered customer support assistant that analyzes customer requests, classifies intents, extracts structured information, generates responses, and performs automated quality checks.
 
-Модель по умолчанию: `qwen2.5:7b` локально через Ollama (OpenAI-совместимый API). Провайдер и модель задаются в `.env`, код менять не нужно: подойдёт OpenAI, OpenRouter или Ollama.
+The project demonstrates practical LLM engineering techniques, including prompt engineering, structured outputs, routing, guardrails, retry mechanisms, fallback strategies, and automated testing.
 
-## Структура
-```
-main.py             # пайплайн + режим --compare для сравнения промптов (День 2)
-llm_client.py       # только вызов LLM API
-prompts.py          # system prompts, user templates, лимиты, выбор лучшего варианта
-sample_inputs/      # 5 тестовых текстов: жалоба, вопрос, новость, просьба, баг-репорт на английском
-results/            # результаты прогонов (JSON)
-reports/            # отчёты (сравнение промптов)
-```
+## Features
 
-## Запуск
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-python main.py                 # пайплайн с лучшим промптом
-python main.py --compare       # сравнение промптов (по 2 прогона на текст)
-```
+- Customer request analysis
+- Intent classification
+- Structured JSON extraction with Pydantic
+- Intent-based prompt routing
+- Answer generation
+- LLM-based self-check
+- Retry with exponential backoff
+- Fallback prompts and predefined safe responses
+- Graceful degradation
+- Logging and error handling
+- Command-line interface (CLI)
+- Seven demonstration scenarios
+- Fourteen automated tests
 
-## День 1 — базовый пайплайн
-Для каждого текста: `summary`, 3 `key_points`, короткий `response`. Результат: `results/day01_results.json`.
+## Tech Stack
 
-Наблюдения после Дня 1:
-- на новость модель ответила «Ваша компания…» — не поняла, кто автор и кому отвечать;
-- на жалобу ответила как сторонний советчик («обратитесь в поддержку»), а не от лица сервиса;
-- для вопроса key points превратились в советы вместо мыслей автора;
-- формат пунктов плавал (регистр, точки).
-
-## День 2 — архитектура промптов
-- System prompt и user template вынесены в `prompts.py`; лимиты — константы там же, они подставляются и в промпт, и в проверку (`check_constraints` в `main.py`).
-- Ограничения: summary ≤ 200 символов, ровно 3 key points (≤ 15 слов каждый), response ≤ 400 символов.
-- Сравниваются варианты промпта на 5 текстах (temperature одинаковая — 0.2, меняется только промпт):
-
-| Вариант | Идея |
+| Technology | Purpose |
 |---|---|
-| `v1_basic` | короткая инструкция «сделай summary, мысли, ответ», без ограничений |
-| `v2_constraints` | явные лимиты длины + правило «key points — факты из текста, не советы» |
-| `v3_structured` | роль и правила в system prompt + спецификация ответа в стиле JSON prompting + поле `text_type` первым + правила ответа для каждого типа + один пример (few-shot) |
-| `v4_combined` | лимиты v2 + роль и типы v3; без примера, с явным правилом про язык, запретом выдумывать факты и напоминанием в конце промпта |
+| Python | Core application |
+| Qwen2.5:7b | Default language model |
+| Ollama | Local LLM inference |
+| OpenAI SDK | OpenAI-compatible API client |
+| Pydantic | Structured output validation |
+| python-dotenv | Environment configuration |
+| argparse | Command-line interface |
+| unittest | Automated testing |
+| Mock | Failure simulation |
+| Logging | Pipeline monitoring |
 
-Почему `text_type` стоит **первым** полем: модель генерирует JSON слева направо, токен за токеном. Если она сначала решила «это жалоба», то и `response` дальше пишется с учётом этого решения. Это дешёвая версия chain-of-thought.
+## Pipeline Architecture
 
-Полный отчёт с метриками и ответами: `reports/day02_prompt_comparison.md`.
+```text
+User Input
+    |
+    v
+Meaning Extraction
+    |
+    v
+Intent Classification
+    |
+    v
+Structured Field Extraction
+    |
+    v
+Intent-based Answer Generation
+    |
+    v
+Self-check
+    |
+    v
+Final JSON Output
+```
 
-### Результаты первого сравнения (v1–v3, 2 прогона на текст, qwen2.5:7b)
+Each LLM stage is protected by validation, retry and fallback mechanisms.
 
-| Вариант | всё ок | ср. длина summary | ср. длина response | ср. время, с |
-|---|---|---|---|---|
-| v1_basic | 0% | 260 | 308 | 12.2 |
-| v2_constraints | 100% | 64 | 146 | 5.0 |
-| v3_structured | 60% | 78 | 189 | 7.4 |
+If an intermediate stage fails, the pipeline attempts to continue using the available information.
 
-Что видно:
-- **Явные ограничения работают:** без них (v1) модель выдаёт 5–6 пунктов и длинные тексты, с ними (v2) — 100% соблюдения. Короче ответ → меньше токенов → быстрее (12 с → 5 с).
-- **v2 держит формат, но не понимает роль:** на жалобу пишет о клиенте в третьем лице («Клиент рискует перейти к конкурентам…»), на просьбу написать письмо — описывает, каким оно должно быть, вместо самого письма.
-- **v3 понимает роль лучше** (отвечает на жалобу от лица сервиса, на новость — нейтрально), но:
-  - в 40% прогонов даёт 4 key points вместо 3;
-  - на английский баг-репорт ответил по-русски — русский few-shot пример повлиял сильнее, чем правило «отвечай на языке текста»;
-  - придумал факт «мы уже знаем о баге и работаем над исправлением» — роль сервиса подтолкнула к галлюцинации;
-  - вопрос про ML отнёс к `request` — границы типов были размыты.
+## Project Structure
 
-Отсюда `v4_combined`: взять строгость v2 и роль v3, убрать пример, явно развести типы, запретить выдумывать статус проблемы и повторить главные ограничения в конце промпта.
+```text
+llm/
+├── llm_client.py
+├── router.py
+├── day04.py
+├── day04_prompts.py
+├── day04_schemas.py
+├── day05.py
+├── day05_prompts.py
+├── day05_schemas.py
+├── day06.py
+├── day06_guardrails.py
+├── day06_prompts.py
+├── day06_tests.py
+├── day07.py
+├── day07_tests.py
+├── demo/
+│   └── inputs.json
+├── requirements.txt
+├── .env.example
+├── .gitignore
+└── README.md
+```
 
-### Второй раунд: v4 (полный отчёт первого раунда — `reports/day02_round1_v1-v4.md`)
+Earlier development stages are preserved for educational purposes.
 
-Первая версия v4 соблюла все лимиты (100%), ответила по-английски на баг-репорт, правильно определила `question` и написала само письмо, **но**:
-- стала отвечать по-английски **на все** тексты — правило с английским примером и английские ключи JSON перетянули модель в другую сторону;
-- пообещала «full refund», которого в тексте нет;
-- добавила деталь «Q1 report», хотя в тексте просто «квартальный отчёт».
+The final application entry point is `day07.py`.
 
-Исправления:
-- **язык определяется в коде** (`detect_language` в `prompts.py`: кириллица vs латиница) и передаётся в промпт явно: «Язык ответа: русский». Модели больше не нужно угадывать — детерминированные вещи делаем кодом, LLM оставляем только то, где нужен «интеллект»;
-- в system prompt: не обещать возврат, компенсацию, сроки; не добавлять деталей, которых нет в тексте.
+## Installation
 
-| Вариант | всё ок | ср. длина summary | ср. длина response | ср. время, с |
-|---|---|---|---|---|
-| v2_constraints | 100% | 60 | 154 | 4.9 |
-| v4_combined | 100% | 70 | 146 | 6.9 |
+### 1. Clone the repository
 
-Отчёт второго раунда — `reports/day02_prompt_comparison.md`.
+```bash
+git clone https://github.com/Nancy-drew-12/llm.git
+cd llm
+```
 
-### Вывод
+### 2. Create a virtual environment
 
-**Лучший вариант — `v4_combined`** (выставлен как `BEST_VARIANT`).
+The project was developed and tested with Python 3.14.
 
-- По формату он не хуже v2: 100% ответов соблюдают все ограничения.
-- По смыслу заметно лучше: правильно определяет тип текста, отвечает на жалобу от лица сервиса, на просьбу — пишет само письмо, на вопрос — даёт конкретный порядок действий, отвечает на языке текста.
-- v2 стабилен по формату, но не понимает роль: пишет о клиенте в третьем лице и описывает письмо вместо того, чтобы его написать.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-Что поняли про промпты:
-1. **Явные ограничения** (длина, ровно 3 пункта) — главный рычаг стабильности формата: 0% → 100%.
-2. **Роль и тип текста** делают ответ уместным, но провоцируют выдумки от лица сервиса — их нужно явно запрещать.
-3. **Примеры влияют сильнее инструкций:** язык примера перетягивает язык ответа.
-4. **Порядок полей в JSON важен:** `text_type` первым заставляет модель сначала решить, что за текст, а потом писать ответ.
-5. **Что можно вычислить кодом — вычисляй кодом** (язык), не перекладывай на модель.
+For Windows:
 
-Оставшиеся ограничения (qwen2.5:7b): иногда додумывает детали («холодная пицца» вместо «заказа»), всё ещё может пообещать компенсацию, ответ на новость бывает слишком общим. Промптом это до конца не лечится — дальше нужны валидация схемы и guardrails (следующие дни).
+```bash
+.venv\Scripts\activate
+```
 
-## День 3 — structured output и валидация
+### 3. Install dependencies
 
-Модель возвращает JSON по схеме `TextAnalysis` (`schemas.py`, pydantic):
-`category` (complaint / question / request / news / other), `sentiment` (negative / neutral / positive),
-`summary`, `key_points` (ровно 3), `final_answer`. Структура и типы проверяются строго,
-лимиты длины из Дня 2 — мягкие предупреждения.
+```bash
+python -m pip install -r requirements.txt
+```
 
-**Ошибки не роняют пайплайн.** `parse_analysis` либо возвращает объект, либо бросает `LLMOutputError`
-с типом (`empty`, `invalid_json`, `schema`, `api_error`) и понятным сообщением, например:
-«нет обязательного поля «sentiment»», «поле «key_points»: ожидалось ровно 3 пункта, получено 4».
-Такой текст уходит на ручной разбор, остальные обрабатываются дальше.
-Проверка без модели: `python main.py --demo-errors`.
+### 4. Configure environment variables
 
-**Поля используются в логике (`decide`):**
-- маршрут по `category`: complaint → support, question → auto_reply, request → assistant,
-  news → digest, other → manual_review (позитивный отзыв → auto_reply);
-- приоритет по `category` + `sentiment`: негативная жалоба → high;
-- `final_answer`: отправляется автоматически для auto_reply и assistant, для жалоб — только
-  черновик оператору (модель может пообещать компенсацию, которой нет), для новостей — внутренний вывод;
-- сводка по батчу: сколько прошли схему, распределение по категориям, тональности и маршрутам.
+```bash
+cp .env.example .env
+```
 
-**Результат на qwen2.5:7b:** 6/6 ответов прошли схему, категории и тональность определены верно.
-Модель иногда додумывает детали («холодная пицца») и обещает компенсацию, поэтому ответы на жалобы — только черновики.
+The application supports OpenAI-compatible API providers.
+
+#### Option A: Local Ollama (default)
+
+Install Ollama from https://ollama.com.
+
+Download the model:
+
+```bash
+ollama pull qwen2.5:7b
+```
+
+Make sure the Ollama server is running. If necessary, start it in a separate terminal:
+
+```bash
+ollama serve
+```
+
+Configure `.env`:
+
+```dotenv
+OPENAI_API_KEY=ollama
+OPENAI_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=qwen2.5:7b
+```
+
+A paid API key is not required for local Ollama inference.
+
+#### Option B: OpenAI
+
+```dotenv
+OPENAI_API_KEY=your_api_key_here
+OPENAI_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o-mini
+```
+
+#### Option C: OpenRouter
+
+```dotenv
+OPENAI_API_KEY=your_api_key_here
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+LLM_MODEL=your_model_name
+```
+
+Select a model that supports the required chat completion and JSON output functionality.
+
+Never commit real API keys to GitHub.
+
+## Usage
+
+### Interactive mode
+
+```bash
+python day07.py
+```
+
+### Single request
+
+```bash
+python day07.py --text "Уже неделю не могу войти в аккаунт"
+```
+
+### Demo mode
+
+```bash
+python day07.py --demo
+```
+
+The demo mode processes seven predefined customer requests from `demo/inputs.json`.
+
+## Intent Categories
+
+| Category | Description |
+|---|---|
+| support | Technical or account-related issues |
+| complaint | Customer dissatisfaction |
+| feedback | Suggestions and feature requests |
+| sales | Pricing and subscription questions |
+| general_question | General information requests |
+
+## Example Input
+
+```text
+Уже неделю не могу войти в аккаунт
+```
+
+## Example Output
+
+Illustrative JSON output. Actual model responses may vary.
+
+```json
+{
+  "input": "Уже неделю не могу войти в аккаунт",
+  "meaning": {
+    "summary": "Пользователь не может войти в аккаунт уже неделю.",
+    "user_goal": "Восстановить доступ к аккаунту.",
+    "key_details": [
+      "Проблема со входом",
+      "Уже неделю"
+    ]
+  },
+  "classification": {
+    "category": "support",
+    "intent": "resolve_login_issue"
+  },
+  "structured_fields": {
+    "problem": "Не удаётся войти в аккаунт",
+    "duration": "уже неделю",
+    "requested_action": "Восстановить доступ",
+    "important_facts": [
+      "Проблема сохраняется неделю"
+    ]
+  },
+  "answer": "Уточните, пожалуйста, какая ошибка появляется при попытке входа в аккаунт.",
+  "self_check": {
+    "is_valid": true,
+    "contradictions": [],
+    "missing_details": [],
+    "unsupported_claims": [],
+    "explanation": "Ответ соответствует запросу пользователя."
+  },
+  "status": "success",
+  "failed_stages": []
+}
+```
+
+## Pipeline Statuses
+
+| Status | Description |
+|---|---|
+| success | All stages completed and self-check approved the answer |
+| needs_review | Self-check detected potential quality issues |
+| degraded | One or more stages failed, but an answer was generated |
+| fallback | A predefined safe response was returned |
+| invalid_input | The input was invalid or empty |
+
+## Reliability and Guardrails
+
+The application handles:
+
+- Empty LLM responses
+- Invalid JSON
+- Missing required fields
+- Excessively long responses
+- Temporary API errors
+- API retry exhaustion
+- Intermediate pipeline failures
+
+Reliability mechanisms include:
+
+- Pydantic schema validation
+- Response length validation
+- Exponential backoff
+- Up to three application-level attempts per request
+- Alternative fallback prompts
+- Predefined safe responses
+- Graceful degradation
+- Stage-level logging
+
+## Automated Testing
+
+Run guardrail tests:
+
+```bash
+python day06_tests.py
+```
+
+Run final pipeline tests:
+
+```bash
+python day07_tests.py
+```
+
+Run all tests:
+
+```bash
+python -m unittest day06_tests day07_tests -v
+```
+
+Tested scenarios include invalid JSON, missing fields, temporary API failures, empty responses, excessive response length, partial pipeline failures and fallback behavior.
+
+Mock-based tests do not require actual LLM inference.
+
+## Demo Scenarios
+
+| Scenario | Expected category |
+|---|---|
+| Account login issue | support |
+| Subscription activation issue | support |
+| Application freezes | complaint |
+| Feature request | feedback |
+| Pricing and annual subscription | sales |
+| Changing email address | general_question |
+| Missing message history | support |
+
+## Evaluation Results
+
+Results from the recorded local demonstration run:
+
+| Metric | Result |
+|---|---|
+| Processed demo scenarios | 7/7 |
+| Completed pipeline stages | 35/35 |
+| Successful API responses | 35/35 |
+| Self-check approved | 3/7 |
+| Requires review | 4/7 |
+| Automated tests passed | 14/14 |
+
+Technical pipeline execution and generated response quality are evaluated separately.
+
+## Known Limitations
+
+- LLM-generated responses may contain hallucinations.
+- Self-check can produce false positives and false negatives.
+- Schema validation guarantees structural conformity, not factual accuracy.
+- The application does not have access to actual customer accounts, company policies or product documentation.
+- Generated troubleshooting recommendations may be inappropriate or unsafe.
+- Answers marked as `needs_review` require human review.
+- Even answers marked as `success` are not guaranteed to be factually correct.
+- Response generation may be slow when running a local model.
+- Compatibility with alternative API providers has not been fully tested.
+
+This is an educational prototype, not a production-ready autonomous customer support system.
+
+## Future Improvements
+
+- Retrieval-Augmented Generation (RAG)
+- Company-specific knowledge base
+- Automatic response correction
+- Stronger safety and factuality checks
+- Evaluation datasets and quality metrics
+- FastAPI endpoint
+- Web interface
+
+## Project Summary
+
+This project demonstrates the development of an LLM application from basic API integration to a structured, fault-tolerant mini-product.
+
+It combines prompt engineering, intent classification, structured generation, validation, routing, error handling and automated testing in a single application.
